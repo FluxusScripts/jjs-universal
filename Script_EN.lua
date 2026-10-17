@@ -105,7 +105,7 @@ platform.Parent = workspace
 
 state.platform = platform
 
--- РАБОЧАЯ МЕХАНИКА ЧЕРНОЙ МОЛНИИ
+
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 	if state.divergent and not state.repeating and shared.autoUltimate == state
@@ -254,7 +254,7 @@ create("UIPadding", {
 }, content)
 create("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, content)
 
--- ОБНОВЛЕННАЯ ФУНКЦИЯ С ПОДДЕРЖКОЙ 2-Й СТРОКИ
+
 local function createSwitchRow(order, title, supporting, supporting2, callback)
 	local hasSecondLine = supporting2 and supporting2 ~= ""
 	local rowHeight = hasSecondLine and 92 or 72
@@ -348,7 +348,6 @@ local function createSwitchRow(order, title, supporting, supporting2, callback)
 	end
 end
 
--- ВЫЗОВЫ С ДОБАВЛЕННОЙ 2-Й СТРОКОЙ
 createSwitchRow(1, STRINGS.autoTitle, STRINGS.autoSub, STRINGS.autoSub2, function(value)
 	state.enabled = value
 end)
