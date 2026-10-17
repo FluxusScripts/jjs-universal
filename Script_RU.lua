@@ -116,33 +116,26 @@ platform.Parent = workspace
 state.platform = platform
 
 local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+	if state.divergent and not state.repeating and shared.autoUltimate == state
+		and getnamecallmethod() == "FireServer" and typeof(self) == "Instance"
+		and self.Parent == divergentRemotes and not checkcaller() then
+		local remote = self
+		local args = table.pack(...)
 
-local function disarm()
-	if not state.capturing then
-		return
+		task.delay(REPEAT_DELAY, function()
+			if not state.divergent then
+				return
+			end
+
+			state.repeating = true
+			pcall(remote.FireServer, remote, table.unpack(args, 1, args.n))
+			state.repeating = false
+		end)
 	end
 
-	state.capturing = false
-	hookmetamethod(game, "__namecall", oldNamecall)
-end
-
-local function arm()
-	if state.capturing or state.divergentArgs then
-		return
-	end
-
-	state.capturing = true
-	oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-		if state.capturing and getnamecallmethod() == "FireServer" and typeof(self) == "Instance"
-			and self.Parent == divergentRemotes and not checkcaller() then
-			state.divergentRemote = self
-			state.divergentArgs = table.pack(...)
-			state.capturing = false
-
-			task.defer(function()
-				hookmetamethod(game, "__namecall", oldNamecall)
-			end)
-		end
+	return oldNamecall(self, ...)
+end))
 
 		return oldNamecall(self, ...)
 	end))
