@@ -3,11 +3,14 @@ local STRINGS = {
 	subtitle = "by ekqici",
 	banner = "Платформа под вами",
 	autoTitle = "Авто R-ка",
-	autoSub = "Повторяется само, только мехамару. ",
+	autoSub = "Повторяется само",
+	autoSub2 = "только мехамару", -
 	platformTitle = "Платформа",
 	platformSub = "Огромный пол под картой, проще antivoid",
+	platformSub2 = "Скрывается по крестику",
 	divergentTitle = "Черная молния",
 	divergentSub = "Раз потом два.",
+	divergentSub2 = "",
 	materialSection = "Материал платформы",
 	colorSection = "Цвет платформы",
 	open = "Открыть",
@@ -25,6 +28,8 @@ local OFFLOAD_TIMEOUT = 1
 local DRAG_THRESHOLD = 4
 local REPEAT_DELAY = 0.30
 local CACHE_REFRESH = 0.5
+
+local bannerDismissed = false
 
 local MATERIALS = {
 	"SmoothPlastic", "Plastic", "Neon", "Grass", "Ice", "Marble", "Granite",
@@ -100,7 +105,7 @@ platform.Parent = workspace
 
 state.platform = platform
 
--- ИСПРАВЛЕННАЯ МЕХАНИКА ЧЕРНОЙ МОЛНИИ (РАБОТАЕТ ЧЕРЕЗ ПЕРЕХВАТ ПАКЕТОВ)
+-- РАБОЧАЯ МЕХАНИКА ЧЕРНОЙ МОЛНИИ
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 	if state.divergent and not state.repeating and shared.autoUltimate == state
@@ -154,7 +159,14 @@ local banner = create("Frame", {
 	BackgroundColor3 = SNACKBAR,
 }, screenGui)
 round(banner, 8)
-create("UIPadding", { PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18) }, banner)
+create("UIPadding", { PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 12) }, banner)
+create("UIListLayout", {
+	FillDirection = Enum.FillDirection.Horizontal,
+	Padding = UDim.new(0, 12),
+	VerticalAlignment = Enum.VerticalAlignment.Center,
+	SortOrder = Enum.SortOrder.LayoutOrder,
+}, banner)
+
 create("TextLabel", {
 	Size = UDim2.fromOffset(0, 40),
 	AutomaticSize = Enum.AutomaticSize.X,
@@ -163,7 +175,24 @@ create("TextLabel", {
 	TextColor3 = ON_SNACKBAR,
 	Font = Enum.Font.GothamMedium,
 	TextSize = 14,
+	LayoutOrder = 1,
 }, banner)
+
+local bannerClose = create("TextButton", {
+	Size = UDim2.fromOffset(24, 24),
+	BackgroundTransparency = 1,
+	Text = "×",
+	TextColor3 = ON_SNACKBAR,
+	Font = Enum.Font.GothamBold,
+	TextSize = 20,
+	LayoutOrder = 2,
+}, banner)
+round(bannerClose, 12)
+
+bannerClose.MouseButton1Click:Connect(function()
+	bannerDismissed = true
+	banner.Visible = false
+end)
 
 local menu = create("Frame", {
 	Size = UDim2.fromOffset(340, 540),
@@ -225,9 +254,13 @@ create("UIPadding", {
 }, content)
 create("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, content)
 
-local function createSwitchRow(order, title, supporting, callback)
+-- ОБНОВЛЕННАЯ ФУНКЦИЯ С ПОДДЕРЖКОЙ 2-Й СТРОКИ
+local function createSwitchRow(order, title, supporting, supporting2, callback)
+	local hasSecondLine = supporting2 and supporting2 ~= ""
+	local rowHeight = hasSecondLine and 92 or 72
+
 	local row = create("Frame", {
-		Size = UDim2.new(1, 0, 0, 72),
+		Size = UDim2.new(1, 0, 0, rowHeight),
 		BackgroundColor3 = SURFACE,
 		LayoutOrder = order,
 	}, content)
@@ -256,6 +289,20 @@ local function createSwitchRow(order, title, supporting, callback)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, row)
+
+	if hasSecondLine then
+		create("TextLabel", {
+			Size = UDim2.new(1, -96, 0, 18),
+			Position = UDim2.fromOffset(18, 58),
+			BackgroundTransparency = 1,
+			Text = supporting2,
+			TextColor3 = ON_SURFACE_VARIANT,
+			Font = Enum.Font.Gotham,
+			TextSize = 13,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+		}, row)
+	end
 
 	local track = create("TextButton", {
 		Size = UDim2.fromOffset(52, 32),
@@ -301,16 +348,17 @@ local function createSwitchRow(order, title, supporting, callback)
 	end
 end
 
-createSwitchRow(1, STRINGS.autoTitle, STRINGS.autoSub, function(value)
+-- ВЫЗОВЫ С ДОБАВЛЕННОЙ 2-Й СТРОКОЙ
+createSwitchRow(1, STRINGS.autoTitle, STRINGS.autoSub, STRINGS.autoSub2, function(value)
 	state.enabled = value
 end)
 
-local setPlatform = createSwitchRow(2, STRINGS.platformTitle, STRINGS.platformSub, function(value)
+local setPlatform = createSwitchRow(2, STRINGS.platformTitle, STRINGS.platformSub, STRINGS.platformSub2, function(value)
 	platform.Parent = value and workspace or nil
-	banner.Visible = value
+	banner.Visible = value and not bannerDismissed
 end)
 
-createSwitchRow(3, STRINGS.divergentTitle, STRINGS.divergentSub, function(value)
+createSwitchRow(3, STRINGS.divergentTitle, STRINGS.divergentSub, STRINGS.divergentSub2, function(value)
 	state.divergent = value
 end)
 
