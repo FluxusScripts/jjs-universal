@@ -1,13 +1,13 @@
 local STRINGS = {
-	title = "Overload",
-	subtitle = "Controls",
+	title = "Universal Script",
+	subtitle = "by ekqici",
 	banner = "Platform below you",
-	autoTitle = "Auto Overload",
-	autoSub = "Repeats on its own",
+	autoTitle = "Auto R-move",
+	autoSub = "Repeats itself, Mechamaru only.",
 	platformTitle = "Platform",
-	platformSub = "Giant floor under the map",
-	divergentTitle = "Divergent repeat",
-	divergentSub = "Cast once to arm, then +1 hit",
+	platformSub = "Giant floor under the map, easier antivoid",
+	divergentTitle = "Black Flash",
+	divergentSub = "Once, then twice.",
 	materialSection = "Platform material",
 	colorSection = "Platform color",
 	open = "Open",
@@ -24,15 +24,7 @@ local PLATFORM_SIZE = Vector3.new(2048, 4, 2048)
 local OFFLOAD_TIMEOUT = 1
 local DRAG_THRESHOLD = 4
 local REPEAT_DELAY = 0.30
-local REPEAT_LOCKOUT = 2
 local CACHE_REFRESH = 0.5
-
-local DIVERGENT_ANIMATIONS = {
-	["rbxassetid://100962226150441"] = true,
-	["rbxassetid://95852624447551"] = true,
-	["rbxassetid://74145636023952"] = true,
-	["rbxassetid://123171106092050"] = true,
-}
 
 local MATERIALS = {
 	"SmoothPlastic", "Plastic", "Neon", "Grass", "Ice", "Marble", "Granite",
@@ -71,7 +63,7 @@ local divergentRemotes = servicesFolder:WaitForChild("DivergentFistService"):Wai
 
 if shared.divergentRepeat then
 	shared.divergentRepeat.enabled = false
-	shared.divergentRepeat.gui:Destroy()
+	if shared.divergentRepeat.gui then shared.divergentRepeat.gui:Destroy() end
 end
 
 if shared.autoUltimate then
@@ -79,12 +71,8 @@ if shared.autoUltimate then
 	old.enabled = false
 	old.divergent = false
 
-	if old.disarm then
-		old.disarm()
-	end
-
-	old.gui:Destroy()
-	old.platform:Destroy()
+	if old.gui then old.gui:Destroy() end
+	if old.platform then old.platform:Destroy() end
 
 	for _, connection in ipairs(old.connections or {}) do
 		connection:Disconnect()
@@ -94,10 +82,7 @@ end
 local state = {
 	enabled = false,
 	divergent = false,
-	capturing = false,
-	divergentRemote = nil,
-	divergentArgs = nil,
-	ignoreUntil = 0,
+	repeating = false,
 	connections = {},
 }
 shared.autoUltimate = state
@@ -115,77 +100,29 @@ platform.Parent = workspace
 
 state.platform = platform
 
+-- ИСПРАВЛЕННАЯ МЕХАНИКА ЧЕРНОЙ МОЛНИИ (РАБОТАЕТ ЧЕРЕЗ ПЕРЕХВАТ ПАКЕТОВ)
 local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+	if state.divergent and not state.repeating and shared.autoUltimate == state
+		and getnamecallmethod() == "FireServer" and typeof(self) == "Instance"
+		and self.Parent == divergentRemotes and not checkcaller() then
+		
+		local remote = self
+		local args = table.pack(...)
 
-local function disarm()
-	if not state.capturing then
-		return
-	end
+		task.delay(REPEAT_DELAY, function()
+			if not state.divergent then
+				return
+			end
 
-	state.capturing = false
-	hookmetamethod(game, "__namecall", oldNamecall)
-end
-
-local function arm()
-	if state.capturing or state.divergentArgs then
-		return
-	end
-
-	state.capturing = true
-	oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-		if state.capturing and getnamecallmethod() == "FireServer" and typeof(self) == "Instance"
-			and self.Parent == divergentRemotes and not checkcaller() then
-			state.divergentRemote = self
-			state.divergentArgs = table.pack(...)
-			state.capturing = false
-
-			task.defer(function()
-				hookmetamethod(game, "__namecall", oldNamecall)
-			end)
-		end
-
-		return oldNamecall(self, ...)
-	end))
-end
-
-state.disarm = disarm
-
-local function onAnimationPlayed(track)
-	if not state.divergent or not state.divergentArgs or os.clock() < state.ignoreUntil then
-		return
-	end
-
-	if not DIVERGENT_ANIMATIONS[track.Animation.AnimationId] then
-		return
-	end
-
-	state.ignoreUntil = os.clock() + REPEAT_LOCKOUT
-
-	local remote, args = state.divergentRemote, state.divergentArgs
-
-	task.delay(REPEAT_DELAY, function()
-		if state.divergent then
+			state.repeating = true
 			pcall(remote.FireServer, remote, table.unpack(args, 1, args.n))
-		end
-	end)
-end
+			state.repeating = false
+		end)
+	end
 
-local function watchCharacter(character)
-	task.spawn(function()
-		local humanoid = character:WaitForChild("Humanoid", 10)
-		local animator = humanoid and humanoid:WaitForChild("Animator", 10)
-
-		if animator then
-			table.insert(state.connections, animator.AnimationPlayed:Connect(onAnimationPlayed))
-		end
-	end)
-end
-
-if localPlayer.Character then
-	watchCharacter(localPlayer.Character)
-end
-
-table.insert(state.connections, localPlayer.CharacterAdded:Connect(watchCharacter))
+	return oldNamecall(self, ...)
+end))
 
 local function create(className, properties, parent)
 	local object = Instance.new(className)
@@ -218,13 +155,6 @@ local banner = create("Frame", {
 }, screenGui)
 round(banner, 8)
 create("UIPadding", { PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18) }, banner)
-create("UIListLayout", {
-	FillDirection = Enum.FillDirection.Horizontal,
-	Padding = UDim.new(0, 12),
-	VerticalAlignment = Enum.VerticalAlignment.Center,
-	SortOrder = Enum.SortOrder.LayoutOrder,
-}, banner)
-
 create("TextLabel", {
 	Size = UDim2.fromOffset(0, 40),
 	AutomaticSize = Enum.AutomaticSize.X,
@@ -233,23 +163,7 @@ create("TextLabel", {
 	TextColor3 = ON_SNACKBAR,
 	Font = Enum.Font.GothamMedium,
 	TextSize = 14,
-	LayoutOrder = 1,
 }, banner)
-
-local bannerClose = create("TextButton", {
-	Size = UDim2.fromOffset(24, 24),
-	BackgroundTransparency = 1,
-	Text = "×",
-	TextColor3 = ON_SNACKBAR,
-	Font = Enum.Font.GothamBold,
-	TextSize = 18,
-	LayoutOrder = 2,
-}, banner)
-round(bannerClose, 12)
-
-bannerClose.MouseButton1Click:Connect(function()
-	banner.Visible = false
-end)
 
 local menu = create("Frame", {
 	Size = UDim2.fromOffset(340, 540),
@@ -398,12 +312,6 @@ end)
 
 createSwitchRow(3, STRINGS.divergentTitle, STRINGS.divergentSub, function(value)
 	state.divergent = value
-
-	if value then
-		arm()
-	else
-		disarm()
-	end
 end)
 
 setPlatform(true)
