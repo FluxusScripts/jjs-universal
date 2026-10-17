@@ -218,6 +218,13 @@ local banner = create("Frame", {
 }, screenGui)
 round(banner, 8)
 create("UIPadding", { PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18) }, banner)
+create("UIListLayout", {
+	FillDirection = Enum.FillDirection.Horizontal,
+	Padding = UDim.new(0, 12),
+	VerticalAlignment = Enum.VerticalAlignment.Center,
+	SortOrder = Enum.SortOrder.LayoutOrder,
+}, banner)
+
 create("TextLabel", {
 	Size = UDim2.fromOffset(0, 40),
 	AutomaticSize = Enum.AutomaticSize.X,
@@ -226,7 +233,23 @@ create("TextLabel", {
 	TextColor3 = ON_SNACKBAR,
 	Font = Enum.Font.GothamMedium,
 	TextSize = 14,
+	LayoutOrder = 1,
 }, banner)
+
+local bannerClose = create("TextButton", {
+	Size = UDim2.fromOffset(24, 24),
+	BackgroundTransparency = 1,
+	Text = "×",
+	TextColor3 = ON_SNACKBAR,
+	Font = Enum.Font.GothamBold,
+	TextSize = 18,
+	LayoutOrder = 2,
+}, banner)
+round(bannerClose, 12)
+
+bannerClose.MouseButton1Click:Connect(function()
+	banner.Visible = false
+end)
 
 local menu = create("Frame", {
 	Size = UDim2.fromOffset(340, 540),
