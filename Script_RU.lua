@@ -24,15 +24,7 @@ local PLATFORM_SIZE = Vector3.new(2048, 4, 2048)
 local OFFLOAD_TIMEOUT = 1
 local DRAG_THRESHOLD = 4
 local REPEAT_DELAY = 0.30
-local REPEAT_LOCKOUT = 2
 local CACHE_REFRESH = 0.5
-
-local DIVERGENT_ANIMATIONS = {
-	["rbxassetid://100962226150441"] = true,
-	["rbxassetid://95852624447551"] = true,
-	["rbxassetid://74145636023952"] = true,
-	["rbxassetid://123171106092050"] = true,
-}
 
 local MATERIALS = {
 	"SmoothPlastic", "Plastic", "Neon", "Grass", "Ice", "Marble", "Granite",
@@ -71,7 +63,7 @@ local divergentRemotes = servicesFolder:WaitForChild("DivergentFistService"):Wai
 
 if shared.divergentRepeat then
 	shared.divergentRepeat.enabled = false
-	shared.divergentRepeat.gui:Destroy()
+	if shared.divergentRepeat.gui then shared.divergentRepeat.gui:Destroy() end
 end
 
 if shared.autoUltimate then
@@ -79,12 +71,8 @@ if shared.autoUltimate then
 	old.enabled = false
 	old.divergent = false
 
-	if old.disarm then
-		old.disarm()
-	end
-
-	old.gui:Destroy()
-	old.platform:Destroy()
+	if old.gui then old.gui:Destroy() end
+	if old.platform then old.platform:Destroy() end
 
 	for _, connection in ipairs(old.connections or {}) do
 		connection:Disconnect()
@@ -94,10 +82,7 @@ end
 local state = {
 	enabled = false,
 	divergent = false,
-	capturing = false,
-	divergentRemote = nil,
-	divergentArgs = nil,
-	ignoreUntil = 0,
+	repeating = false,
 	connections = {},
 }
 shared.autoUltimate = state
@@ -115,11 +100,13 @@ platform.Parent = workspace
 
 state.platform = platform
 
+-- ИСПРАВЛЕННАЯ МЕХАНИКА ЧЕРНОЙ МОЛНИИ (РАБОТАЕТ ЧЕРЕЗ ПЕРЕХВАТ ПАКЕТОВ)
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 	if state.divergent and not state.repeating and shared.autoUltimate == state
 		and getnamecallmethod() == "FireServer" and typeof(self) == "Instance"
 		and self.Parent == divergentRemotes and not checkcaller() then
+		
 		local remote = self
 		local args = table.pack(...)
 
@@ -136,44 +123,6 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 
 	return oldNamecall(self, ...)
 end))
-
-
-local function onAnimationPlayed(track)
-	if not state.divergent or not state.divergentArgs or os.clock() < state.ignoreUntil then
-		return
-	end
-
-	if not DIVERGENT_ANIMATIONS[track.Animation.AnimationId] then
-		return
-	end
-
-	state.ignoreUntil = os.clock() + REPEAT_LOCKOUT
-
-	local remote, args = state.divergentRemote, state.divergentArgs
-
-	task.delay(REPEAT_DELAY, function()
-		if state.divergent then
-			pcall(remote.FireServer, remote, table.unpack(args, 1, args.n))
-		end
-	end)
-end
-
-local function watchCharacter(character)
-	task.spawn(function()
-		local humanoid = character:WaitForChild("Humanoid", 10)
-		local animator = humanoid and humanoid:WaitForChild("Animator", 10)
-
-		if animator then
-			table.insert(state.connections, animator.AnimationPlayed:Connect(onAnimationPlayed))
-		end
-	end)
-end
-
-if localPlayer.Character then
-	watchCharacter(localPlayer.Character)
-end
-
-table.insert(state.connections, localPlayer.CharacterAdded:Connect(watchCharacter))
 
 local function create(className, properties, parent)
 	local object = Instance.new(className)
@@ -363,12 +312,6 @@ end)
 
 createSwitchRow(3, STRINGS.divergentTitle, STRINGS.divergentSub, function(value)
 	state.divergent = value
-
-	if value then
-		arm()
-	else
-		disarm()
-	end
 end)
 
 setPlatform(true)
