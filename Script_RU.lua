@@ -137,11 +137,6 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 	return oldNamecall(self, ...)
 end))
 
-		return oldNamecall(self, ...)
-	end))
-end
-
-state.disarm = disarm
 
 local function onAnimationPlayed(track)
 	if not state.divergent or not state.divergentArgs or os.clock() < state.ignoreUntil then
