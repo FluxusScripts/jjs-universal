@@ -1,4 +1,4 @@
-local STRINGS = {
+local STRINGS {
 	title = "универсальный скрипт",
 	subtitle = "by ekqici",
 	banner = "Платформа под вами",
