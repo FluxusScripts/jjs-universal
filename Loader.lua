@@ -1,6 +1,6 @@
 local tweenService = game:GetService("TweenService")
 
-local BASE_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/"
+local BASE_URL = "https://raw.githubusercontent.com/FluxusScripts/jjs-universal/main/"
 
 local LANGUAGES = {
 	{ code = "en", name = "English", hint = "Load the English version", file = "Script_EN.lua", loading = "Loading..." },
