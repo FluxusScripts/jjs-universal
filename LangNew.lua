@@ -8,14 +8,14 @@ local LANGUAGES = {
 		code = "en",
 		name = "English",
 		hint = "Load the English version",
-		file = "NewScript_EN",
+		file = "NewScript_EN.lua",
 		loading = "Loading..."
 	},
 	{
 		code = "ru",
 		name = "Русский",
 		hint = "Загрузить русскую версию",
-		file = "NewScript_RU",
+		file = "NewScript_RU.lua",
 		loading = "Загрузка..."
 	},
 }
