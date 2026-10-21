@@ -3,8 +3,8 @@ local tweenService = game:GetService("TweenService")
 local BASE_URL = "https://raw.githubusercontent.com/FluxusScripts/jjs-universal/main/"
 
 local LANGUAGES = {
-	{ code = "en", name = "English", hint = "Load the English version", file = "Script_EN.lua", loading = "Loading..." },
-	{ code = "ru", name = "Русский", hint = "Загрузить русскую версию", file = "Script_RU.lua", loading = "Загрузка..." },
+	{ code = "en", name = "English", hint = "Load the English version", file = "OldScript_EN.lua", loading = "Loading..." },
+	{ code = "ru", name = "Русский", hint = "Загрузить русскую версию", file = "OldScript_RU.lua", loading = "Загрузка..." },
 }
 
 local SURFACE = Color3.fromRGB(20, 18, 24)
