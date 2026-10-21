@@ -1,20 +1,20 @@
 local STRINGS = {
 	title = "универсальный скрипт",
 	subtitle = "by ekqici",
-	banner = "Платформа под вами",
-	autoTitle = "Авто R-ка",
-	autoSub = "Повторяется само",
+	banner = "платформа заспавнена под картой",
+	autoTitle = "авто спешл",
+	autoSub = "повторяется автоматически",
 	autoSub2 = "только мехамару.",
-	platformTitle = "Платформа",
-	platformSub = "Огромный пол под картой, проще antivoid",
-	platformSub2 = "",
-	divergentTitle = "Черная молния",
-	divergentSub = "Раз потом два.",
+	platformTitle = "платформа",
+	platformSub = "огромный пол под картой, проще antivoid",
+	platformSub2 = "изи",
+	divergentTitle = "чёрная молния!!",
+	divergentSub = "саб не нужен",
 	divergentSub2 = "",
-	materialSection = "Материал платформы",
-	colorSection = "Цвет платформы",
-	open = "Открыть",
-	close = "Закрыть",
+	materialSection = "материал платформы",
+	colorSection = "цвет платформы",
+	open = "открыть",
+	close = "закрыть",
 }
 
 local playersService = game:GetService("Players")
@@ -27,15 +27,7 @@ local PLATFORM_SIZE = Vector3.new(2048, 4, 2048)
 local OFFLOAD_TIMEOUT = 1
 local DRAG_THRESHOLD = 4
 local REPEAT_DELAY = 0.30
-local REPEAT_LOCKOUT = 2
 local CACHE_REFRESH = 0.5
-
-local DIVERGENT_ANIMATIONS = {
-	["rbxassetid://100962226150441"] = true,
-	["rbxassetid://95852624447551"] = true,
-	["rbxassetid://74145636023952"] = true,
-	["rbxassetid://123171106092050"] = true,
-}
 
 local MATERIALS = {
 	"SmoothPlastic", "Plastic", "Neon", "Grass", "Ice", "Marble", "Granite",
@@ -88,10 +80,6 @@ if shared.autoUltimate then
 	old.enabled = false
 	old.divergent = false
 
-	if old.disarm then
-		old.disarm()
-	end
-
 	if old.gui then
 		old.gui:Destroy()
 	end
@@ -108,17 +96,37 @@ end
 local state = {
 	enabled = false,
 	divergent = false,
-	capturing = false,
-	divergentRemote = nil,
-	divergentArgs = nil,
-	ignoreUntil = 0,
+	repeating = false,
 	connections = {},
 	gui = nil,
 	platform = nil,
-	disarm = nil,
 }
 
 shared.autoUltimate = state
+
+-- WORKING divergent mechanic (namecall repeat)
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+	if state.divergent and not state.repeating and shared.autoUltimate == state
+		and getnamecallmethod() == "FireServer" and typeof(self) == "Instance"
+		and self.Parent == divergentRemotes and not checkcaller() then
+
+		local remote = self
+		local args = table.pack(...)
+
+		task.delay(REPEAT_DELAY, function()
+			if not state.divergent then
+				return
+			end
+
+			state.repeating = true
+			pcall(remote.FireServer, remote, table.unpack(args, 1, args.n))
+			state.repeating = false
+		end)
+	end
+
+	return oldNamecall(self, ...)
+end))
 
 state.gui = Instance.new("ScreenGui")
 state.gui.Name = "OverloadMenu"
@@ -239,93 +247,6 @@ local function makeWindow(frame, dragHandle, minSize, maxSize)
 		end)
 	)
 end
-
-local oldNamecall
-
-local function disarm()
-	if not state.capturing then
-		return
-	end
-
-	state.capturing = false
-	hookmetamethod(game, "__namecall", oldNamecall)
-end
-
-local function arm()
-	if state.capturing or state.divergentArgs then
-		return
-	end
-
-	state.capturing = true
-
-	oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-		if state.capturing
-			and getnamecallmethod() == "FireServer"
-			and typeof(self) == "Instance"
-			and self.Parent == divergentRemotes
-			and not checkcaller()
-		then
-			state.divergentRemote = self
-			state.divergentArgs = table.pack(...)
-			state.capturing = false
-
-			task.defer(function()
-				hookmetamethod(game, "__namecall", oldNamecall)
-			end)
-		end
-
-		return oldNamecall(self, ...)
-	end))
-end
-
-state.disarm = disarm
-
-local function onAnimationPlayed(track)
-	if not state.divergent
-		or not state.divergentArgs
-		or os.clock() < state.ignoreUntil
-	then
-		return
-	end
-
-	if not DIVERGENT_ANIMATIONS[track.Animation.AnimationId] then
-		return
-	end
-
-	state.ignoreUntil = os.clock() + REPEAT_LOCKOUT
-
-	local remote = state.divergentRemote
-	local args = state.divergentArgs
-
-	task.delay(REPEAT_DELAY, function()
-		if state.divergent then
-			pcall(remote.FireServer, remote, table.unpack(args, 1, args.n))
-		end
-	end)
-end
-
-local function watchCharacter(character)
-	task.spawn(function()
-		local humanoid = character:WaitForChild("Humanoid", 10)
-		local animator = humanoid and humanoid:WaitForChild("Animator", 10)
-
-		if animator then
-			table.insert(
-				state.connections,
-				animator.AnimationPlayed:Connect(onAnimationPlayed)
-			)
-		end
-	end)
-end
-
-if localPlayer.Character then
-	watchCharacter(localPlayer.Character)
-end
-
-table.insert(
-	state.connections,
-	localPlayer.CharacterAdded:Connect(watchCharacter)
-)
 
 local function isAlive()
 	return state.gui ~= nil and state.gui.Parent ~= nil
@@ -801,12 +722,6 @@ createSwitch(
 	STRINGS.divergentSub2,
 	function(value)
 		state.divergent = value
-
-		if value then
-			arm()
-		else
-			disarm()
-		end
 	end
 )
 
@@ -1075,126 +990,126 @@ table.insert(
 
 local teleportPage = addTab(4, "teleport", "Телепорт")
 
-local TELEPORT_TARGET = Vector3.new(0, 0.333, 000)
+local TELEPORT_TARGET = Vector3.new(0, 0.333, 0)
 
 local teleportButton = create("TextButton", {
-    Size = UDim2.new(1, 0, 0, 56),
-    BackgroundColor3 = PRIMARY_CONTAINER,
-    Text = "телепортировать типа в пизду",
-    TextColor3 = ON_PRIMARY_CONTAINER,
-    Font = Enum.Font.GothamMedium,
-    TextSize = 15,
-    AutoButtonColor = false,
-    LayoutOrder = 1,
+	Size = UDim2.new(1, 0, 0, 56),
+	BackgroundColor3 = PRIMARY_CONTAINER,
+	Text = "телепортировать типа в пизду",
+	TextColor3 = ON_PRIMARY_CONTAINER,
+	Font = Enum.Font.GothamMedium,
+	TextSize = 15,
+	AutoButtonColor = false,
+	LayoutOrder = 1,
 }, teleportPage)
 
 round(teleportButton, 16)
 
 teleportButton.MouseButton1Click:Connect(function()
-    local character = localPlayer.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
+	local character = localPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
 
-    if root then
-        root.CFrame = CFrame.new(TELEPORT_TARGET)
-    end
+	if root then
+		root.CFrame = CFrame.new(TELEPORT_TARGET)
+	end
 end)
 
-local TELEPORT_TARGET = Vector3.new(-19.015, -63.225, -319.508)
+local TELEPORT_TARGET2 = Vector3.new(-19.015, -63.225, -319.508)
 
-local teleportButton = create("TextButton", {
-    Size = UDim2.new(1, 0, 0, 56),
-    BackgroundColor3 = PRIMARY_CONTAINER,
-    Text = "телепортировать в пизду2",
-    TextColor3 = ON_PRIMARY_CONTAINER,
-    Font = Enum.Font.GothamMedium,
-    TextSize = 15,
-    AutoButtonColor = false,
-    LayoutOrder = 1,
+local teleportButton2 = create("TextButton", {
+	Size = UDim2.new(1, 0, 0, 56),
+	BackgroundColor3 = PRIMARY_CONTAINER,
+	Text = "телепортировать в пизду2",
+	TextColor3 = ON_PRIMARY_CONTAINER,
+	Font = Enum.Font.GothamMedium,
+	TextSize = 15,
+	AutoButtonColor = false,
+	LayoutOrder = 2,
 }, teleportPage)
 
-round(teleportButton, 16)
+round(teleportButton2, 16)
 
-teleportButton.MouseButton1Click:Connect(function()
-    local character = localPlayer.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
+teleportButton2.MouseButton1Click:Connect(function()
+	local character = localPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
 
-    if root then
-        root.CFrame = CFrame.new(TELEPORT_TARGET)
-    end
+	if root then
+		root.CFrame = CFrame.new(TELEPORT_TARGET2)
+	end
 end)
 
 local noticePanel = create("Frame", {
-    AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(1, -16, 0.5, 0),
-    Size = UDim2.fromOffset(280, 180),
-    BackgroundColor3 = SNACKBAR,
-    Visible = false,
-    ZIndex = 30,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -16, 0.5, 0),
+	Size = UDim2.fromOffset(280, 180),
+	BackgroundColor3 = SNACKBAR,
+	Visible = false,
+	ZIndex = 30,
 }, screenGui)
 
 round(noticePanel, 12)
 
 local noticeTitle = create("TextLabel", {
-    Position = UDim2.fromOffset(12, 8),
-    Size = UDim2.new(1, -52, 0, 32),
-    BackgroundTransparency = 1,
-    Text = "Выбор домэйна",
-    TextColor3 = ON_SNACKBAR,
-    Font = Enum.Font.GothamMedium,
-    TextSize = 15,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    ZIndex = 31,
+	Position = UDim2.fromOffset(12, 8),
+	Size = UDim2.new(1, -52, 0, 32),
+	BackgroundTransparency = 1,
+	Text = "Выбор домэйна",
+	TextColor3 = ON_SNACKBAR,
+	Font = Enum.Font.GothamMedium,
+	TextSize = 15,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	ZIndex = 31,
 }, noticePanel)
 
 local closeNotice = create("TextButton", {
-    AnchorPoint = Vector2.new(1, 0),
-    Position = UDim2.new(1, -8, 0, 8),
-    Size = UDim2.fromOffset(30, 30),
-    BackgroundColor3 = PRIMARY_CONTAINER,
-    Text = "×",
-    TextColor3 = ON_PRIMARY_CONTAINER,
-    Font = Enum.Font.GothamMedium,
-    TextSize = 22,
-    ZIndex = 32,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -8, 0, 8),
+	Size = UDim2.fromOffset(30, 30),
+	BackgroundColor3 = PRIMARY_CONTAINER,
+	Text = "×",
+	TextColor3 = ON_PRIMARY_CONTAINER,
+	Font = Enum.Font.GothamMedium,
+	TextSize = 22,
+	ZIndex = 32,
 }, noticePanel)
 
 round(closeNotice, 8)
 
 local domainList = create("Frame", {
-    Position = UDim2.fromOffset(10, 46),
-    Size = UDim2.new(1, -20, 1, -56),
-    BackgroundTransparency = 1,
-    ZIndex = 31,
+	Position = UDim2.fromOffset(10, 46),
+	Size = UDim2.new(1, -20, 1, -56),
+	BackgroundTransparency = 1,
+	ZIndex = 31,
 }, noticePanel)
 
-local domainListLayout = create("UIListLayout", {
-    Padding = UDim.new(0, 6),
-    SortOrder = Enum.SortOrder.LayoutOrder,
+create("UIListLayout", {
+	Padding = UDim.new(0, 6),
+	SortOrder = Enum.SortOrder.LayoutOrder,
 }, domainList)
 
 local function clearDomainRows()
-    for _, child in ipairs(domainList:GetChildren()) do
-        if child:IsA("TextButton") then
-            child:Destroy()
-        end
-    end
+	for _, child in ipairs(domainList:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
 end
 
 closeNotice.MouseButton1Click:Connect(function()
-    noticePanel.Visible = false
+	noticePanel.Visible = false
 end)
 
 local notifyLabel = create("TextLabel", {
-    AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(1, -16, 0.5, 100),
-    Size = UDim2.fromOffset(280, 36),
-    BackgroundColor3 = SNACKBAR,
-    TextColor3 = ON_SNACKBAR,
-    Font = Enum.Font.GothamMedium,
-    TextSize = 13,
-    Text = "",
-    Visible = false,
-    ZIndex = 40,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -16, 0.5, 100),
+	Size = UDim2.fromOffset(280, 36),
+	BackgroundColor3 = SNACKBAR,
+	TextColor3 = ON_SNACKBAR,
+	Font = Enum.Font.GothamMedium,
+	TextSize = 13,
+	Text = "",
+	Visible = false,
+	ZIndex = 40,
 }, screenGui)
 
 round(notifyLabel, 8)
@@ -1202,137 +1117,137 @@ round(notifyLabel, 8)
 local notifyToken = 0
 
 local function notify(message)
-    notifyToken += 1
-    local token = notifyToken
+	notifyToken += 1
+	local token = notifyToken
 
-    notifyLabel.Text = message
-    notifyLabel.Visible = true
+	notifyLabel.Text = message
+	notifyLabel.Visible = true
 
-    task.delay(2.5, function()
-        if notifyToken == token then
-            notifyLabel.Visible = false
-        end
-    end)
+	task.delay(2.5, function()
+		if notifyToken == token then
+			notifyLabel.Visible = false
+		end
+	end)
 end
 
 local function getDomainColliders()
-    local results = {}
-    local domainsFolder = workspace:FindFirstChild("Domains")
+	local results = {}
+	local domainsFolder = workspace:FindFirstChild("Domains")
 
-    if not domainsFolder then
-        return results
-    end
+	if not domainsFolder then
+		return results
+	end
 
-    for _, domain in ipairs(domainsFolder:GetChildren()) do
-        if domain.Name == "Domain" then
-            local collider = domain:FindFirstChild("DomainCollider", true)
+	for _, domain in ipairs(domainsFolder:GetChildren()) do
+		if domain.Name == "Domain" then
+			local collider = domain:FindFirstChild("DomainCollider", true)
 
-            if collider and collider:IsA("BasePart") then
-                table.insert(results, {
-                    domain = domain,
-                    collider = collider,
-                })
-            end
-        end
-    end
+			if collider and collider:IsA("BasePart") then
+				table.insert(results, {
+					domain = domain,
+					collider = collider,
+				})
+			end
+		end
+	end
 
-    table.sort(results, function(a, b)
-        local pa = a.collider.Position
-        local pb = b.collider.Position
+	table.sort(results, function(a, b)
+		local pa = a.collider.Position
+		local pb = b.collider.Position
 
-        if pa.X ~= pb.X then
-            return pa.X < pb.X
-        end
+		if pa.X ~= pb.X then
+			return pa.X < pb.X
+		end
 
-        if pa.Z ~= pb.Z then
-            return pa.Z < pb.Z
-        end
+		if pa.Z ~= pb.Z then
+			return pa.Z < pb.Z
+		end
 
-        return pa.Y < pb.Y
-    end)
+		return pa.Y < pb.Y
+	end)
 
-    return results
+	return results
 end
 
 local function teleportToCollider(collider)
-    if not collider or not collider.Parent then
-        notify("Домэйн уже исчез")
-        return
-    end
+	if not collider or not collider.Parent then
+		notify("Домэйн уже исчез")
+		return
+	end
 
-    local character = localPlayer.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
+	local character = localPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
 
-    if not root then
-        notify("Персонаж не найден")
-        return
-    end
+	if not root then
+		notify("Персонаж не найден")
+		return
+	end
 
-    local destination = collider.Position
-        + Vector3.new(0, collider.Size.Y / 2 + 4, 0)
+	local destination = collider.Position
+		+ Vector3.new(0, collider.Size.Y / 2 + 4, 0)
 
-    root.CFrame = CFrame.new(destination)
-    noticePanel.Visible = false
+	root.CFrame = CFrame.new(destination)
+	noticePanel.Visible = false
 end
 
 local function openDomainSelector()
-    local domains = getDomainColliders()
+	local domains = getDomainColliders()
 
-    clearDomainRows()
+	clearDomainRows()
 
-    if #domains == 0 then
-        notify("Активные DomainCollider не найдены")
-        noticePanel.Visible = false
-        return
-    end
+	if #domains == 0 then
+		notify("Активные DomainCollider не найдены")
+		noticePanel.Visible = false
+		return
+	end
 
-    noticePanel.Size = UDim2.fromOffset(
-        280,
-        math.min(180, 54 + #domains * 42)
-    )
+	noticePanel.Size = UDim2.fromOffset(
+		280,
+		math.min(180, 54 + #domains * 42)
+	)
 
-    for index, entry in ipairs(domains) do
-        local position = entry.collider.Position
+	for index, entry in ipairs(domains) do
+		local position = entry.collider.Position
 
-        local row = create("TextButton", {
-            Size = UDim2.new(1, 0, 0, 36),
-            BackgroundColor3 = PRIMARY_CONTAINER,
-            Text = string.format(
-                "Domain %d  (%.0f, %.0f, %.0f)",
-                index,
-                position.X,
-                position.Y,
-                position.Z
-            ),
-            TextColor3 = ON_PRIMARY_CONTAINER,
-            Font = Enum.Font.GothamMedium,
-            TextSize = 12,
-            AutoButtonColor = false,
-            LayoutOrder = index,
-            ZIndex = 32,
-        }, domainList)
+		local row = create("TextButton", {
+			Size = UDim2.new(1, 0, 0, 36),
+			BackgroundColor3 = PRIMARY_CONTAINER,
+			Text = string.format(
+				"Domain %d  (%.0f, %.0f, %.0f)",
+				index,
+				position.X,
+				position.Y,
+				position.Z
+			),
+			TextColor3 = ON_PRIMARY_CONTAINER,
+			Font = Enum.Font.GothamMedium,
+			TextSize = 12,
+			AutoButtonColor = false,
+			LayoutOrder = index,
+			ZIndex = 32,
+		}, domainList)
 
-        round(row, 8)
+		round(row, 8)
 
-        local selectedCollider = entry.collider
+		local selectedCollider = entry.collider
 
-        row.MouseButton1Click:Connect(function()
-            teleportToCollider(selectedCollider)
-        end)
-    end
+		row.MouseButton1Click:Connect(function()
+			teleportToCollider(selectedCollider)
+		end)
+	end
 
-    noticePanel.Visible = true
+	noticePanel.Visible = true
 end
 
 local domainButton = create("TextButton", {
-    Size = UDim2.new(1, 0, 0, 56),
-    BackgroundColor3 = PRIMARY_CONTAINER,
-    Text = "Телепорт в домэйн",
-    TextColor3 = ON_PRIMARY_CONTAINER,
-    Font = Enum.Font.GothamMedium,
-    TextSize = 15,
-    AutoButtonColor = false,
-    LayoutOrder = 2,
+	Size = UDim2.new(1, 0, 0, 56),
+	BackgroundColor3 = PRIMARY_CONTAINER,
+	Text = "Телепорт в домэйн",
+	TextColor3 = ON_PRIMARY_CONTAINER,
+	Font = Enum.Font.GothamMedium,
+	TextSize = 15,
+	AutoButtonColor = false,
+	LayoutOrder = 3,
 }, teleportPage)
 
 round(domainButton, 16)
@@ -1340,40 +1255,40 @@ round(domainButton, 16)
 domainButton.MouseButton1Click:Connect(openDomainSelector)
 
 local domainStatus = create("TextLabel", {
-    Size = UDim2.new(1, 0, 0, 30),
-    BackgroundColor3 = PRIMARY_CONTAINER,
-    Text = "Домэйны: проверка...",
-    TextColor3 = ON_PRIMARY_CONTAINER,
-    Font = Enum.Font.GothamMedium,
-    TextSize = 12,
-    TextWrapped = false,
-    Active = false,
-    Selectable = false,
-    LayoutOrder = 3,
+	Size = UDim2.new(1, 0, 0, 30),
+	BackgroundColor3 = PRIMARY_CONTAINER,
+	Text = "Домэйны: проверка...",
+	TextColor3 = ON_PRIMARY_CONTAINER,
+	Font = Enum.Font.GothamMedium,
+	TextSize = 12,
+	TextWrapped = false,
+	Active = false,
+	Selectable = false,
+	LayoutOrder = 4,
 }, teleportPage)
 
 round(domainStatus, 10)
 
 local function countActiveDomains()
-    return #getDomainColliders()
+	return #getDomainColliders()
 end
 
 task.spawn(function()
-    while state.gui and state.gui.Parent do
-        local count = countActiveDomains()
+	while state.gui and state.gui.Parent do
+		local count = countActiveDomains()
 
-        domainStatus.Text = "Домэйны: " .. count
+		domainStatus.Text = "Домэйны: " .. count
 
-        if count > 0 then
-            domainStatus.BackgroundColor3 = SECONDARY_CONTAINER
-            domainStatus.TextColor3 = ON_SECONDARY_CONTAINER
-        else
-            domainStatus.BackgroundColor3 = PRIMARY_CONTAINER
-            domainStatus.TextColor3 = ON_PRIMARY_CONTAINER
-        end
+		if count > 0 then
+			domainStatus.BackgroundColor3 = SECONDARY_CONTAINER
+			domainStatus.TextColor3 = ON_SECONDARY_CONTAINER
+		else
+			domainStatus.BackgroundColor3 = PRIMARY_CONTAINER
+			domainStatus.TextColor3 = ON_PRIMARY_CONTAINER
+		end
 
-        task.wait(0.25)
-    end
+		task.wait(0.25)
+	end
 end)
 
 selectTab("auto")
